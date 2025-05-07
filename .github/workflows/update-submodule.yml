@@ -43,7 +43,6 @@ jobs:
       - name: Update test-submodule
         run: |
           echo "Updating test-submodule"
-          git submodule init
           git submodule update --remote --merge submodule-folder
       
       # Commit and push changes
