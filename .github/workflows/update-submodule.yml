@@ -50,9 +50,5 @@ jobs:
       - name: Commit and push changes
         run: |
           git add .
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "Update test-submodule to latest version"
-            git push
-          fi
+          git commit -m "Update test-submodule to latest version"
+          git push
