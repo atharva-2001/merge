@@ -5,6 +5,9 @@ on:
     - cron: '0 0 * * 0'  # Weekly on Sunday at midnight
   repository_dispatch:
     types: [update-subtree]
+  push:
+    branches:
+      - main
     
 permissions:
   contents: write  # Required for pushing changes
@@ -25,10 +28,12 @@ jobs:
       
       - name: Add/Update Subtree
         run: |
-          # Check if subtree already exists
-          if git ls-tree -d --name-only HEAD | grep -q "subtree-folder"; then
+          # Check if subtree folder exists
+          if [ -d "subtree-folder" ]; then
             echo "Updating existing subtree..."
-            git subtree pull --prefix=subtree-folder https://github.com/atharva-2001/test-subtree main --squash -m "Update subtree from test-subtree repository"
+            # Try to pull subtree, but if it fails (possibly not a subtree), add it
+            git subtree pull --prefix=subtree-folder https://github.com/atharva-2001/test-subtree main --squash -m "Update subtree from test-subtree repository" || \
+            git subtree add --prefix=subtree-folder https://github.com/atharva-2001/test-subtree main --squash -m "Add subtree from test-subtree repository"
           else
             echo "Adding new subtree..."
             git subtree add --prefix=subtree-folder https://github.com/atharva-2001/test-subtree main --squash -m "Add subtree from test-subtree repository"
@@ -37,8 +42,10 @@ jobs:
       - name: Push changes
         run: |
           # Push only if there are changes
-          if git diff --quiet HEAD; then
-            echo "No changes to push"
+          if [ -n "$(git status --porcelain)" ] || ! git diff --quiet HEAD; then
+            git add .
+            git commit -m "Update subtree from test-subtree repository" || echo "Nothing to commit"
+            git push || echo "No changes to push or push failed"
           else
-            git push
+            echo "No changes to push"
           fi
