@@ -1,45 +1,63 @@
-name: Update Git Submodule
+name: Update Test-Submodule
 on:
-  workflow_dispatch:  # Manual trigger
+  # Run weekly - Sunday at midnight
   schedule:
-    - cron: '0 0 * * 0'  # Weekly on Sunday at midnight
+    - cron: '0 0 * * 0'
+  
+  # Allow manual triggering
+  workflow_dispatch:
+  
+  # Watch for changes in the test-submodule repo
   repository_dispatch:
     types: [update-submodule]
 
 permissions:
-  contents: write  # Required for pushing changes
+  contents: write
+  pull-requests: write
 
 jobs:
   update-submodule:
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          submodules: 'recursive'  # Check out submodules too
+          submodules: 'recursive'  # Needed to check out submodules
       
-      - name: Setup Git
+      - name: Configure Git
         run: |
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
       
-      - name: Add/Update Submodule
+      # Check if submodule exists, if not add it
+      - name: Check and add submodule if needed
         run: |
-          # Check if submodule exists
-          if [ -f ".gitmodules" ] && grep -q "submodule-folder" .gitmodules; then
-            echo "Updating existing submodule..."
-            git submodule update --remote --merge submodule-folder
-          else
-            echo "Adding new submodule..."
+          if [ ! -f ".gitmodules" ] || ! grep -q "submodule-folder" .gitmodules; then
+            echo "Adding test-submodule as a new submodule"
             git submodule add https://github.com/atharva-2001/test-submodule submodule-folder
+          else
+            echo "test-submodule submodule already exists"
           fi
       
-      - name: Commit and push if changes exist
+      # Update the submodule
+      - name: Update test-submodule
         run: |
-          git add .
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "Update submodule to latest version"
-            git push
-          fi
+          echo "Updating test-submodule"
+          git submodule init
+          git submodule update --remote --merge submodule-folder
+          git add submodule-folder
+      
+      # Create Pull Request instead of direct push
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: 'Update test-submodule'
+          body: |
+            This is an automated PR to update the test-submodule from its original repository.
+            
+            The update includes all recent changes from the [test-submodule repository](https://github.com/atharva-2001/test-submodule).
+          branch: update-test-submodule
+          commit-message: "Update test-submodule to latest version"
+          draft: false

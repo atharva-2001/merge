@@ -1,51 +1,61 @@
-name: Update Git Subtree
+name: Update Test-Subtree
 on:
-  workflow_dispatch:  # Manual trigger
+  # Run weekly - Sunday at midnight
   schedule:
-    - cron: '0 0 * * 0'  # Weekly on Sunday at midnight
+    - cron: '0 0 * * 0'
+  
+  # Allow manual triggering
+  workflow_dispatch:
+  
+  # Watch for changes in the test-subtree repo
   repository_dispatch:
     types: [update-subtree]
-  push:
-    branches:
-      - main
-    
+
 permissions:
-  contents: write  # Required for pushing changes
+  contents: write
+  pull-requests: write
 
 jobs:
   update-subtree:
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Need full history for subtree
+          fetch-depth: 0  # Needed for subtree operations
       
-      - name: Setup Git
+      - name: Configure Git
         run: |
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
       
-      - name: Add/Update Subtree
+      # Check if subtree exists, if not add it
+      - name: Check and add subtree if needed
         run: |
-          # Check if subtree folder exists
-          if [ -d "subtree-folder" ]; then
-            echo "Updating existing subtree..."
-            # Try to pull subtree, but if it fails (possibly not a subtree), add it
-            git subtree pull --prefix=subtree-folder https://github.com/atharva-2001/test-subtree main --squash -m "Update subtree from test-subtree repository" || \
-            git subtree add --prefix=subtree-folder https://github.com/atharva-2001/test-subtree main --squash -m "Add subtree from test-subtree repository"
+          if ! git ls-tree -d --name-only HEAD | grep -q "subtree-folder"; then
+            echo "Adding test-subtree as a new subtree"
+            git subtree add --prefix=subtree-folder https://github.com/atharva-2001/test-subtree main --squash
           else
-            echo "Adding new subtree..."
-            git subtree add --prefix=subtree-folder https://github.com/atharva-2001/test-subtree main --squash -m "Add subtree from test-subtree repository"
+            echo "test-subtree subtree already exists"
           fi
       
-      - name: Push changes
+      # Update the subtree
+      - name: Update test-subtree subtree
         run: |
-          # Push only if there are changes
-          if [ -n "$(git status --porcelain)" ] || ! git diff --quiet HEAD; then
-            git add .
-            git commit -m "Update subtree from test-subtree repository" || echo "Nothing to commit"
-            git push || echo "No changes to push or push failed"
-          else
-            echo "No changes to push"
-          fi
+          echo "Updating test-subtree subtree"
+          git subtree pull --prefix=subtree-folder https://github.com/atharva-2001/test-subtree main --squash -m "Update test-subtree from original repository"
+      
+      # Create Pull Request instead of direct push
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: 'Update test-subtree subtree'
+          body: |
+            This is an automated PR to update the test-subtree subtree from its original repository.
+            
+            The update includes all recent changes from the [test-subtree repository](https://github.com/atharva-2001/test-subtree).
+          branch: update-test-subtree
+          commit-message: "Update test-subtree from original repository"
+          draft: false
