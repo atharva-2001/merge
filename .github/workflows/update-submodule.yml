@@ -1,0 +1,45 @@
+name: Update Git Submodule
+on:
+  workflow_dispatch:  # Manual trigger
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday at midnight
+  repository_dispatch:
+    types: [update-submodule]
+
+permissions:
+  contents: write  # Required for pushing changes
+
+jobs:
+  update-submodule:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'  # Check out submodules too
+      
+      - name: Setup Git
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+      
+      - name: Add/Update Submodule
+        run: |
+          # Check if submodule exists
+          if [ -f ".gitmodules" ] && grep -q "submodule-folder" .gitmodules; then
+            echo "Updating existing submodule..."
+            git submodule update --remote --merge submodule-folder
+          else
+            echo "Adding new submodule..."
+            git submodule add https://github.com/atharva-2001/test-submodule submodule-folder
+          fi
+      
+      - name: Commit and push if changes exist
+        run: |
+          git add .
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update submodule to latest version"
+            git push
+          fi

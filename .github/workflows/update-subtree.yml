@@ -1,0 +1,44 @@
+name: Update Git Subtree
+on:
+  workflow_dispatch:  # Manual trigger
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday at midnight
+  repository_dispatch:
+    types: [update-subtree]
+    
+permissions:
+  contents: write  # Required for pushing changes
+
+jobs:
+  update-subtree:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Need full history for subtree
+      
+      - name: Setup Git
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+      
+      - name: Add/Update Subtree
+        run: |
+          # Check if subtree already exists
+          if git ls-tree -d --name-only HEAD | grep -q "subtree-folder"; then
+            echo "Updating existing subtree..."
+            git subtree pull --prefix=subtree-folder https://github.com/atharva-2001/test-subtree main --squash -m "Update subtree from test-subtree repository"
+          else
+            echo "Adding new subtree..."
+            git subtree add --prefix=subtree-folder https://github.com/atharva-2001/test-subtree main --squash -m "Add subtree from test-subtree repository"
+          fi
+      
+      - name: Push changes
+        run: |
+          # Push only if there are changes
+          if git diff --quiet HEAD; then
+            echo "No changes to push"
+          else
+            git push
+          fi
