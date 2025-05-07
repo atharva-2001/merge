@@ -22,7 +22,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          submodules: 'recursive'  # Needed to check out submodules
+          submodules: 'true'  # Needed to check out submodules
       
       - name: Configure Git
         run: |
