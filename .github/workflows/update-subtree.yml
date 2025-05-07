@@ -13,7 +13,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   update-subtree:
@@ -46,16 +45,11 @@ jobs:
           echo "Updating test-subtree subtree"
           git subtree pull --prefix=subtree-folder https://github.com/atharva-2001/test-subtree main --squash -m "Update test-subtree from original repository"
       
-      # Create Pull Request instead of direct push
-      - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          title: 'Update test-subtree subtree'
-          body: |
-            This is an automated PR to update the test-subtree subtree from its original repository.
-            
-            The update includes all recent changes from the [test-subtree repository](https://github.com/atharva-2001/test-subtree).
-          branch: update-test-subtree
-          commit-message: "Update test-subtree from original repository"
-          draft: false
+      # Push changes directly
+      - name: Push changes
+        run: |
+          if [ -n "$(git status --porcelain)" ] || ! git diff --quiet HEAD; then
+            git push
+          else
+            echo "No changes to push"
+          fi

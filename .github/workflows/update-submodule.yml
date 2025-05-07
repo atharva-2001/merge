@@ -13,7 +13,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   update-submodule:
@@ -46,18 +45,14 @@ jobs:
           echo "Updating test-submodule"
           git submodule init
           git submodule update --remote --merge submodule-folder
-          git add submodule-folder
       
-      # Create Pull Request instead of direct push
-      - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          title: 'Update test-submodule'
-          body: |
-            This is an automated PR to update the test-submodule from its original repository.
-            
-            The update includes all recent changes from the [test-submodule repository](https://github.com/atharva-2001/test-submodule).
-          branch: update-test-submodule
-          commit-message: "Update test-submodule to latest version"
-          draft: false
+      # Commit and push changes
+      - name: Commit and push changes
+        run: |
+          git add .
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update test-submodule to latest version"
+            git push
+          fi
